@@ -1,10 +1,18 @@
 'use strict';
 
+// TODO
+// (more time)
+// reveal all bombs when game is over
+// make game over screen better like something YOU LOST or YOU WON on the middle of the board
+// for each number own style
+// add icons to mine and flag
+// selectable difficulties
+
 // Variables
 const minesLeftText = document.querySelector('.subtext');
 const board = document.querySelector('.board');
 const squareValue = [];
-let positionOfMines = new Set([11, 12]);
+let positionOfMines = new Set();
 const gameDifficulty = 'beginner';
 const sizeOfBoardForDifficulty = {
   beginner: 8,
@@ -15,6 +23,7 @@ let endOfGame = false;
 const boardSize = sizeOfBoardForDifficulty[gameDifficulty];
 const actualBoardSize = boardSize + 2;
 let minesLeft = 10;
+let nonMineTilesLeft = boardSize * boardSize - minesLeft;
 
 // Random number in range
 const randomNum = (rangeMin, rangeMax) =>
@@ -68,7 +77,7 @@ const createRandomMines = function () {
 createSquareValue();
 
 // Create mines in random tiles
-// createRandomMines();
+createRandomMines();
 
 // Place mines in proper tiles and calculate values of adjacent squares
 positionOfMines.forEach((mine) => {
@@ -101,81 +110,126 @@ for (let i = 0; i < 100; i++) {
 }
 
 const showTile = function (tile) {
-  if (Number(tile.dataset.value) > 0) {
+  // Basic returns
+  if (tile?.dataset.status === 'flag') return;
+  if (squareValue[Number(tile?.id)] === 'boundary') return;
+  if (squareValue[Number(tile?.id)] === 'mine') return;
+
+  if (Number(tile?.dataset.value) > 0) {
     tile.innerHTML = tile.dataset.value;
   }
 
-  // Only for optimization when user would click the already visible tile
-  tile.dataset.value = 'visible-content';
+  // Have to watch out for tile that doesn't exist
+  if (tile?.dataset) {
+    // Only for optimization when user would click the already visible tile
+    tile.dataset.value = 'visible-content';
 
-  tile.dataset.status = 'number';
+    tile.dataset.status = 'number';
+  }
 };
 
-const spreadColumn = function (tile) {
-  let currentTile = tile;
+// First method that tried to spread show tiles
+// const spreadColumn = function (tile) {
+//   let currentTile = tile;
 
-  // Spread down
-  while (Number(currentTile?.dataset.value) === 0) {
-    showTile(currentTile);
-    currentTile = document.getElementById(
-      `${Number(currentTile.id) + actualBoardSize}`
-    );
+//   // Spread down
+//   while (Number(currentTile?.dataset.value) === 0) {
+//     showTile(currentTile);
+//     currentTile = document.getElementById(
+//       `${Number(currentTile.id) + actualBoardSize}`
+//     );
+//   }
+
+//   // Show one number tile
+//   if (Number(currentTile?.dataset.value) > 0) showTile(currentTile);
+
+//   // Spread up
+//   currentTile = document.getElementById(`${Number(tile.id) - actualBoardSize}`);
+
+//   while (Number(currentTile?.dataset.value) === 0) {
+//     showTile(currentTile);
+//     currentTile = document.getElementById(
+//       `${Number(currentTile.id) - actualBoardSize}`
+//     );
+//   }
+
+//   if (Number(currentTile?.dataset.value) > 0) showTile(currentTile);
+// };
+
+// const spreadRow = function (row) {
+//   let oneNumberTile = false;
+//   let currentRow = row;
+
+//   while (Number(currentRow?.dataset.value) === 0) {
+//     spreadColumn(currentRow);
+//     currentRow = document.getElementById(`${Number(currentRow.id) + 1}`);
+//   }
+
+//   if (Number(currentRow?.dataset.value) > 0) {
+//     showTile(currentRow);
+//     oneNumberTile = true;
+//   }
+
+//   currentRow = document.getElementById(`${Number(row.id) - 1}`);
+
+//   while (Number(currentRow?.dataset.value) === 0) {
+//     spreadColumn(currentRow);
+//     currentRow = document.getElementById(`${Number(currentRow.id) - 1}`);
+//   }
+
+//   if (Number(currentRow?.dataset.value) > 0 && !oneNumberTile)
+//     showTile(currentRow);
+// };
+
+const showAroundTile = function (tile) {
+  // Position of the top left square
+  let temp = Number(tile?.id) - (actualBoardSize + 1);
+
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      const currentTile = document.getElementById(`${temp + j}`);
+      if (
+        Number(currentTile?.dataset.value) === 0 &&
+        currentTile !== tile &&
+        tile?.dataset.status !== 'flag'
+      )
+        showAroundTile(currentTile);
+
+      showTile(currentTile);
+    }
+
+    // Go to the next row
+    temp += actualBoardSize;
   }
-
-  // Show one number tile
-  if (Number(currentTile?.dataset.value) > 0) showTile(currentTile);
-
-  // Spread up
-  currentTile = document.getElementById(`${Number(tile.id) - actualBoardSize}`);
-
-  while (Number(currentTile?.dataset.value) === 0) {
-    showTile(currentTile);
-    currentTile = document.getElementById(
-      `${Number(currentTile.id) - actualBoardSize}`
-    );
-  }
-
-  if (Number(currentTile?.dataset.value) > 0) showTile(currentTile);
-};
-
-const spreadRow = function (row) {
-  let currentRow = row;
-
-  while (Number(currentRow?.dataset.value) === 0) {
-    spreadColumn(currentRow);
-    currentRow = document.getElementById(`${Number(currentRow.id) + 1}`);
-  }
-
-  if (Number(currentRow?.dataset.value) > 0) showTile(currentRow);
-
-  currentRow = document.getElementById(`${Number(row.id) - 1}`);
-
-  while (Number(currentRow?.dataset.value) === 0) {
-    spreadColumn(currentRow);
-    currentRow = document.getElementById(`${Number(currentRow.id) - 1}`);
-  }
-
-  if (Number(currentRow?.dataset.value) > 0) showTile(currentRow);
 };
 
 // Main event listeners
 board.addEventListener('click', function (e) {
+  // Prevent unnecessary events from happening
   if (e.target.dataset.status === 'flag' || endOfGame) return;
-
-  // TODO
-  // tile spreading
-  // make game over conditions
-  // make game over screen better like something YOU LOST or YOU WON on the middle of the board
-  // (more time)
-  // for each number own style
-  // add icons to mine and flag
-  // selectable difficulties
 
   if (e.target.id === 'mine') {
     minesLeftText.textContent = 'You hit the mine :(';
     endOfGame = true;
   } else if (e.target.dataset.status === 'hidden') {
-    spreadRow(e.target);
+    // spreadRow(e.target);
+    if (Number(e.target.dataset.value) > 0) {
+      showTile(e.target);
+      return;
+    }
+    showAroundTile(e.target);
+  }
+
+  // Check if player have won
+  if (
+    ![...board.children].find(
+      (el) =>
+        (el.dataset.status === 'hidden' && el?.id !== 'mine') ||
+        (el.dataset.status === 'flag' && el?.id !== 'mine')
+    )
+  ) {
+    endOfGame = true;
+    minesLeftText.textContent = 'You WON!';
   }
 });
 
